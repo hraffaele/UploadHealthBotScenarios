@@ -1,0 +1,31 @@
+name: Run commands
+on: 
+  push: 
+    branches:
+      - main      
+jobs:
+  deploy-scenarios:
+    runs-on: ubuntu-18.04
+    steps: 
+      - name: Get current date
+        id: date      
+        run: echo "::set-output name=date::$(date +%s)"
+        
+      - name: DEV JWT Generator
+        id: DEVJwtGenerator
+        uses: morzzz007/github-actions-jwt-generator@1.0.1  
+        with:
+          secret: "${{ secrets.API_DEV_SECRET }}"
+          payload: '{"tenantName":"${{secrets.API_DEV_TENANT}}", "iat":" ${{steps.date.outputs.date}} "}'  
+          
+      - name: QA JWT Generator
+        id: QAJwtGenerator
+        uses: morzzz007/github-actions-jwt-generator@1.0.1  
+        with:
+          secret: "${{ secrets.API_QA_SECRET }}"
+          payload: '{"tenantName":"${{secrets.API_QA_TENANT}}", "iat":" ${{steps.date.outputs.date}} "}'       
+          
+      - uses: actions/checkout@master
+      - name: Upload to QA     
+        run: .\scripts\UploadScenarios.ps1 -source_jwt '${{ steps.DEVJwtGenerator.outputs.token }}' -target_jwt '${{ steps.QAJwtGenerator.outputs.token }}' -source_tenant_name '${{secrets.API_DEV_TENANT}}' -target_tenant_name '${{secrets.API_QA_TENANT}}' -retries 4
+        shell: pwsh 
